@@ -1,7 +1,7 @@
 import sys
 import requests
 from PyQt5.QtWidgets import (QApplication, QWidget, QLabel,
-                             QLineEdit, QPushButton, QVBoxLayout)
+                             QLineEdit, QPushButton, QVBoxLayout, QComboBox)
 from PyQt5.QtCore import Qt   # Qt is an engine to run things on
 
 class WeatherApp(QWidget):
@@ -9,6 +9,9 @@ class WeatherApp(QWidget):
         super().__init__()   # inherited from Qwidget obv
         self.city_label = QLabel("Enter city name:", self)  # creating an instance variable to label the text we gave it (and we add it to the self of the weather app)
         self.city_input = QLineEdit(self)  # adds a line for user input in the app
+        self.unit_switch = QComboBox(self) # choose temperature unit
+        self.unit_switch.addItem("Celsius")
+        self.unit_switch.addItem("Fahrenheit")
         self.get_weather_button = QPushButton("Get Weather", self)  # creating a button with the text we gave it and adding it to the app
         self.temperature_label = QLabel(self)  # the temperature label that will be shown and added to the app
         self.temperature_emoji = QLabel(self)  # an emoji shown and added to the app
@@ -22,6 +25,7 @@ class WeatherApp(QWidget):
 
         vbox.addWidget(self.city_label)        # this means this widget is being now managed (later on you might tell it what to do with it stylistically)
         vbox.addWidget(self.city_input)
+        vbox.addWidget(self.unit_switch)
         vbox.addWidget(self.get_weather_button)
         vbox.addWidget(self.temperature_label)
         vbox.addWidget(self.temperature_emoji)
@@ -33,12 +37,17 @@ class WeatherApp(QWidget):
 
         self.city_label.setAlignment(Qt.AlignCenter)  # this aligns city_label centrally
         self.city_input.setAlignment(Qt.AlignCenter)
+        self.unit_switch.setEditable(True)      # initially, we cannot edit the text within the switch (we need to edit it for visual purposes)
+        combo_edit = self.unit_switch.lineEdit()  # we start editing it  (we had to do it 'variably' as it was too long of a code)
+        combo_edit.setReadOnly(True)  # make it only readable (initially it is writable due to allowing edits)
+        combo_edit.setAlignment(Qt.AlignCenter)  # center it
         self.temperature_label.setAlignment(Qt.AlignCenter)      # no need to align the weather button
         self.temperature_emoji.setAlignment(Qt.AlignCenter)
         self.description_label.setAlignment(Qt.AlignCenter)
 
         self.city_label.setObjectName("city_label")   # this sets a certain name into what now has become an object (because css requires to deal with objects)
         self.city_input.setObjectName("city_input")
+        self.unit_switch.setObjectName("unit_switch")
         self.get_weather_button.setObjectName("get_weather_button")
         self.temperature_label.setObjectName("temperature_label")
         self.temperature_emoji.setObjectName("temperature_emoji")
@@ -54,6 +63,12 @@ class WeatherApp(QWidget):
             }
             QLineEdit#city_input{
                 font-size: 40px;
+            }
+            QComboBox#unit_switch{
+                font-size: 22px;
+                font-family: arial;
+                background-color: #ededed;
+                font-weight: 520;
             }
             QPushButton#get_weather_button{
                 font-size: 30px;
@@ -72,16 +87,17 @@ class WeatherApp(QWidget):
         """)  # no need to explain
 
         self.get_weather_button.clicked.connect(self.get_weather)  # when clicked we will get the weather from our API
+        self.city_input.returnPressed.connect(self.get_weather)   # when 'return' a.k.a. 'Enter' is pressed, we get the weather
 
     def get_weather(self):   # this will be connected to the connect function above
 
-        api_key = "" <------ # our api key (put your own there)
+        api_key = ""   # <------ get your own api key   
         city = self.city_input.text()   # this is how we will give the json file the name of the city
         url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}"   # this is the specific url to gather the weather data for a certain city
 
         try:
             response = requests.get(url)   # requesting for the data, using the api key as permission
-            response.raise_for_status()   # this is how you raise an exception because 'try' won't do it on its own ??
+            response.raise_for_status()  # this is how you raise an exception because 'try' won't do it on its own ??
             data = response.json()    # to access our json file
 
             if data["cod"] == 200:   # cod means code and 200 means it is successful
@@ -134,10 +150,13 @@ class WeatherApp(QWidget):
         weather_id = data["weather"][0]["id"]
         weather_description = data["weather"][0]["description"]  # 0 index because 'description' is within a LIST (this list has only one element which is the object containing the description key and its value)
 
-        self.temperature_label.setText(f"{temperature_c:.0f}°C")  # :.0f removes decimals
+        if self.unit_switch.currentText() == 'Celsius':
+            self.temperature_label.setText(f"{temperature_c:.0f}°C")  # :.0f removes decimals
+        else:
+            self.temperature_label.setText(f"{temperature_f:.0f}°F")
         self.temperature_emoji.setText(self.get_weather_emoji(weather_id))
         self.description_label.setText(weather_description.title())  # on this label, there will be the description
-                                                           # don't forget title() is to capitalize each word within a string
+
     @staticmethod  # when using a static method, you basically don't need any instance attributes like self or so
     def get_weather_emoji(weather_id):  # in our json file (weather data), each weather has an id, so we need it in order to suggest a specific emoji
         if 200 <= weather_id <= 232:
